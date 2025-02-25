@@ -1,0 +1,154 @@
+{% load static %}
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>	
+	<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<link rel="stylesheet" href="{% static 'databoard/style.css' %}">
+  </head>
+  <body >
+		<div class="flex">
+			<h1 class="px-4">Sensor Data View</h1>
+			<div class="mr-2">
+				<input class="input input-sm input-bordered "
+					type="date"
+					id="start"
+					name="start"
+					value="2024-03-01"
+					min="2024-01-01"
+					max="2024-12-31" />
+			</div>
+			<div class="mr-2">
+				<select class="select select-sm select-bordered" id="duration">
+					<option value="1d">1 day</option>
+					<option value="5d">5 days</option>
+					<option value="1w" selected>1 week</option>
+					<option value="2w">2 weeks</option>
+					<option value="1m">1 month</option>
+				</select>
+			</div>
+			<div class="mr-2">
+				<button class="btn btn-sm btn-info" onclick="refresh()">Refresh</button>
+			</div>
+			<div class="mt-1 flex">
+				<div class="mr-2">
+					<input type="radio" name="radio-dttype" class="radio align-middle radio-info" 
+						value="temperature" checked="checked" onclick="reloadT()"/> <span>Temperature</span>
+				</div>
+				<div class="mr-2">				
+					<input type="radio" name="radio-dttype" class="radio  align-middle radio-success" 
+						value="pressure" onclick="reloadP()"/> <span>Pressure</span>
+				</div>
+				<div class="mr-2">				
+					<input type="radio" name="radio-dttype" class="radio  align-middle" 
+						value="humidity" onclick="reloadH()"/> <span>Humidity</span>
+				</div>
+			</div>
+		</div>
+		<div style="position: relative;height: 90%;">
+			<canvas id="myChart" class=""></canvas>	
+		</div>
+	<script>
+	function refresh(){
+		labels = []
+		datavals = []
+		getData().then(() => {
+			myChart.data.datasets[0].data = datavals;
+			myChart.data.datasets[0].label = dataType;
+			myChart.data.datasets[0].borderColor = lineColor;			
+			myChart.data.labels = labels;	
+			myChart.options.scales.y.title.text = yDisp;
+			myChart.update();}
+		);
+	}
+	let dataType = 'Temperature';
+	let yDisp = 'Temperature (°F)';
+	let lineColor = 'oklch(72.06% .191 231.6 / 0.7)';
+	let labels = []
+	let datavals = []
+	const ctx = document.getElementById('myChart');
+	let myChart;
+	function reloadT(){
+		dataType = "Temperature";
+		yDisp = 'Temperature (°F)';
+		lineColor = 'oklch(0.7206 0.191 231.6 / 0.7)'
+		refresh();
+	}
+	function reloadP(){
+		dataType = 'Pressure';
+		yDisp = 'Pressure (hPa)';
+		lineColor = 'oklch(0.648 0.15 160 / 0.7)'
+		refresh();
+	}
+	function reloadH(){
+		dataType = 'Humidity';
+		yDisp = 'Humidity (%)';
+		lineColor = 'oklch(0.278078 0.029596 256.848 /0.7)'
+		refresh();
+	}
+	function drawChart(){
+		myChart = new Chart(ctx, {
+			type: 'line',
+			data: {
+				labels: labels,
+				datasets:[{
+					label: 'Humidity',
+					data:datavals,
+					borderColor: lineColor,
+					tension: 0.2					
+				}]
+			},
+			options: {	
+				responsive: true,
+				maintainAspectRatio: false,
+				scales: {
+					y: {
+						title: {
+							display: true,
+							text: 'Temperature (°F)'
+						}
+					}
+				}
+			}
+		});
+	}
+	async function getData() {
+		try {
+			const dataType = getSelectedRadioValue('radio-dttype');
+			const startDt = document.getElementById('start').value;
+			const duration = document.getElementById('duration').value;
+			const url = `/databoard/getdata/${dataType}/${startDt}/${duration}`;
+			const response = await fetch(url);
+			if (!response.ok) {
+				throw new Error(`Response status: ${response.status}`);
+			}
+
+			const json = await response.json();
+			//alert(JSON.stringify(json));
+			const dataArray = JSON.parse(json);
+			dataArray.forEach((element) => {
+				labels.push(element.datetm);
+				datavals.push(element.val);
+			});					
+			//console.log(json);
+		} catch (error) {
+			console.error(error.message);
+		}
+	}
+	getData().then(() => drawChart());
+	function getSelectedRadioValue(radioGroupName) {
+		const radioButtons = document.querySelectorAll(`input[type="radio"][name="${radioGroupName}"]`);
+
+		for (const radioButton of radioButtons) {
+			if (radioButton.checked) {
+				return radioButton.value;
+			}
+		}
+		return null; 
+	}
+	</script>
+  </body>
+</html>
