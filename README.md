@@ -28,3 +28,5 @@ Run it with following commands:
 Access the app from `http://localhost:8000`.
 
 # Screenshot
+
+![screenshot](https://raw.githubusercontent.com/marusasa/django-demo-databoard/refs/heads/master/django-demo-databoard.png)
